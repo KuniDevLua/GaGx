@@ -1,0 +1,234 @@
+-- Egg ESP + Pet Randomizer (Professional UI Edition)
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Settings
+local autoRandomize = false
+local espEnabled = true
+local randomizeDelay = 3
+local minimized = false
+local randomizeTime = 0
+
+local function getWeightedRandom(petList)
+	local expandedList = {}
+	for _, entry in ipairs(petList) do
+		local count = math.floor(entry.weight * 100)
+		for _ = 1, count do
+			table.insert(expandedList, entry.name)
+		end
+	end
+	if #expandedList == 0 then
+		return petList[math.random(1, #petList)].name
+	end
+	return expandedList[math.random(1, #expandedList)]
+end
+
+local petLootTable = {
+    ["Dinosaur Egg"] = {
+        {name = "Stegosaurus", weight = 10},
+        {name = "Triceratops", weight = 10},
+        {name = "Pterodactyl", weight = 10},
+        {name = "T-Rex", weight = 3},
+        {name = "Brontosaurus", weight = 10},
+        {name = "Raptor", weight = 10},
+    },
+    ["Paradise Egg"] = {
+        {name = "Ostrich", weight = 10},
+        {name = "Peacock", weight = 10},
+        {name = "Capybara", weight = 10},
+        {name = "Scarlet Macaw", weight = 10},
+        {name = "Mimic Octopus", weight = 3},
+    },
+    ["Bee Egg"] = {
+        {name = "Bee", weight = 10},
+        {name = "Honey Bee", weight = 10},
+        {name = "Bear Bee", weight = 10},
+        {name = "Petal Bee", weight = 10},
+        {name = "Queen Bee", weight = 5},
+    },
+    ["Anti Bee Egg"] = {
+        {name = "Wasp", weight = 10},
+        {name = "Tarantula Hawk", weight = 10},
+        {name = "Moth", weight = 10},
+        {name = "Butterfly", weight = 3},
+        {name = "Disco Bee", weight = 3},
+    },
+    ["Bug Egg"] = {
+        {name = "Caterpillar", weight = 10},
+        {name = "Snail", weight = 10},
+        {name = "Giant Ant", weight = 10},
+        {name = "Praying Mantis", weight = 10},
+        {name = "Dragonfly", weight = 3},
+    },
+    ["Oasis Egg"] = {
+        {name = "Meerkat", weight = 20},
+        {name = "Sand Snake", weight = 10},
+        {name = "Axolotl", weight = 10},
+        {name = "Hyacinth Macaw", weight = 10},
+        {name = "Fennec Fox", weight = 3},
+    },
+    ["Night Egg"] = {
+        {name = "Hedgehog", weight = 10},
+        {name = "Kiwi", weight = 10},
+        {name = "Mole", weight = 10},
+        {name = "Frog", weight = 10},
+        {name = "Echo Frog", weight = 10},
+        {name = "Night Owl", weight = 10},
+        {name = "Raccoon", weight = 3},
+    },
+     ["Primal Egg"] = {
+         {name = "Parasaurolophus", weight = 25},
+         {name = "Iguanodon", weight = 10.5},
+         {name = "Pachycephalosaurus", weight = 8},
+         {name = "Dilophosaurus", weight = 5},
+         {name = "Ankylosaurus", weight = 5},
+         {name = "Spinosaurus", weight = 3},
+    },
+     ["Mythical Egg"] = {
+          {name = "Grey Mouse", weight = 35.71},
+          {name = "Brown Mouse", weight = 26.79},
+          {name = "Squirrel", weight = 26.79},
+          {name = "Red Giant Ant", weight = 8.93},
+          {name = "Red Fox", weight = 1.79},
+  }
+}
+
+-- UI Setup
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+ScreenGui.Name = "EggESP_GUI"
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 240, 0, 240)
+MainFrame.Position = UDim2.new(0, 10, 0.5, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.AnchorPoint = Vector2.new(0, 0.5)
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, -40, 0, 30)
+Title.Position = UDim2.new(0, 10, 0, 10)
+Title.BackgroundTransparency = 1
+Title.Text = "🎲 Egg Randomizer By Kuni"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- UI Buttons
+local ToggleESP = Instance.new("TextButton", MainFrame)
+ToggleESP.Size = UDim2.new(1, -20, 0, 30)
+ToggleESP.Position = UDim2.new(0, 10, 0, 50)
+ToggleESP.Text = "Toggle ESP: ON"
+ToggleESP.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleESP.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleESP.Font = Enum.Font.Gotham
+ToggleESP.TextSize = 14
+
+local ToggleRandomize = Instance.new("TextButton", MainFrame)
+ToggleRandomize.Size = UDim2.new(1, -20, 0, 30)
+ToggleRandomize.Position = UDim2.new(0, 10, 0, 90)
+ToggleRandomize.Text = "Auto Randomize: OFF"
+ToggleRandomize.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleRandomize.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleRandomize.Font = Enum.Font.Gotham
+ToggleRandomize.TextSize = 14
+
+local MinimizeButton = Instance.new("TextButton", MainFrame)
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -40, 0, 10)
+MinimizeButton.Text = "_"
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 14
+
+-- Function: Minimize / Maximize
+MinimizeButton.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		MainFrame:TweenSize(UDim2.new(0, 240, 0, 50), "Out", "Quad", 0.2, true)
+	else
+		MainFrame:TweenSize(UDim2.new(0, 240, 0, 240), "Out", "Quad", 0.2, true)
+	end
+end)
+
+-- Toggle ESP
+ToggleESP.MouseButton1Click:Connect(function()
+	espEnabled = not espEnabled
+	ToggleESP.Text = "Toggle ESP: " .. (espEnabled and "ON" or "OFF")
+end)
+
+-- Toggle Auto Randomize
+ToggleRandomize.MouseButton1Click:Connect(function()
+	autoRandomize = not autoRandomize
+	ToggleRandomize.Text = "Auto Randomize: " .. (autoRandomize and "ON" or "OFF")
+end)
+
+-- ESP Drawing + Randomizer
+local espBillboards = {}
+
+local function clearESP()
+	for _, gui in pairs(espBillboards) do
+		gui:Destroy()
+	end
+	table.clear(espBillboards)
+end
+
+RunService.RenderStepped:Connect(function()
+	if not espEnabled then
+		clearESP()
+		return
+	end
+
+	clearESP()
+
+	for _, egg in ipairs(Workspace:GetDescendants()) do
+		if egg:IsA("Model") and petLootTable[egg.Name] and egg:FindFirstChild("PrimaryPart") then
+			local pet = getWeightedRandom(petLootTable[egg.Name])
+
+			local billboard = Instance.new("BillboardGui")
+			billboard.Size = UDim2.new(0, 100, 0, 20)
+			billboard.Adornee = egg.PrimaryPart
+			billboard.AlwaysOnTop = true
+			billboard.StudsOffset = Vector3.new(0, 2, 0)
+			billboard.Parent = egg
+
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.new(1, 0, 1, 0)
+			label.BackgroundTransparency = 1
+			label.Text = pet
+			label.TextColor3 = Color3.fromRGB(255, 255, 0)
+			label.TextStrokeTransparency = 0.5
+			label.Font = Enum.Font.GothamBold
+			label.TextScaled = true
+			label.Parent = billboard
+
+			table.insert(espBillboards, billboard)
+		end
+	end
+end)
+
+-- Randomizer loop
+task.spawn(function()
+	while true do
+		if autoRandomize then
+			for _, egg in ipairs(Workspace:GetDescendants()) do
+				if egg:IsA("Model") and petLootTable[egg.Name] then
+					local pet = getWeightedRandom(petLootTable[egg.Name])
+					print("Auto-randomized pet for", egg.Name, "->", pet)
+				end
+			end
+		end
+		task.wait(randomizeDelay)
+	end
+end)
